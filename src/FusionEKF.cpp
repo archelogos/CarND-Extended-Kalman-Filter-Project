@@ -2,6 +2,7 @@
 #include "tools.h"
 #include "Eigen/Dense"
 #include <iostream>
+#include <cmath>
 
 using namespace std;
 using Eigen::MatrixXd;
@@ -75,12 +76,10 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       /**
       Convert radar from polar to cartesian coordinates and initialize state.
       */
-      // Using jacobian matrix
-      VectorXd polar(3);
-      polar << measurement_pack.raw_measurements_[0], measurement_pack.raw_measurements_[1], measurement_pack.raw_measurements_[2];
-      MatrixXd Hj = tools.CalculateJacobian(ekf_.x_);
-      MatrixXd Hjt = Hj.transpose();
-      ekf_.x_ << Hjt*polar;
+      float rho = measurement_pack.raw_measurements_[0];
+      float phi = measurement_pack.raw_measurements_[1];
+      float rho_dot = measurement_pack.raw_measurements_[2];
+      ekf_.x_ << rho*cos(phi), rho*sin(phi), 0, 0;
     }
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
       /**
@@ -135,18 +134,18 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
    *  Update
    ****************************************************************************/
 
-  /**
-   TODO:
-     * Use the sensor type to perform the update step.
-     * Update the state and covariance matrices.
-   */
-
   if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar updates
-    MatrixXd Hj = tools.CalculateJacobian(ekf_.x_);
-    ekf_.H_ = Hj;
-    ekf_.R_ = R_radar_;
-    ekf_.UpdateEKF(measurement_pack.raw_measurements_);
+    try {
+      MatrixXd Hj_ = tools.CalculateJacobian(ekf_.x_);
+      ekf_.H_ = Hj_;
+      // ekf_.Hj_last_ = Hj_; // it doesn't work?
+      ekf_.R_ = R_radar_;
+      ekf_.UpdateEKF(measurement_pack.raw_measurements_);
+    } catch (...) {
+      // ekf_.H_ = ekf_.Hj_last_;
+      // catching the error but doing nothing in this step?
+    }
   } else {
     // Laser updates
     ekf_.H_ = H_laser_;

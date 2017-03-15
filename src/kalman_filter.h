@@ -23,6 +23,9 @@ public:
   // measurement covariance matrix
   Eigen::MatrixXd R_;
 
+  // last radar jacobian
+  Eigen::MatrixXd Hj_last_;
+
   /**
    * Constructor
    */
